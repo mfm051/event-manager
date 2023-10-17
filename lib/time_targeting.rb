@@ -6,23 +6,44 @@ contents = CSV.open('event_attendees.csv',
   header_converters: :symbol
 )
 
-registration_dates = contents.map { |row| row[:regdate] }
+def max_count_elements(array)
+  elements_counts = array.uniq.map { |element| array.count(element) }
 
-registration_times = registration_dates.map { |date| Time.strptime(date, "%m/%d/%y %H:%M") }
+  array.uniq.filter { |element| array.count(element) == elements_counts.max }
+end
 
+string_dates = contents.map { |row| row[:regdate] }
+
+registration_dates = string_dates.map { |date| Time.strptime(date, "%m/%d/%y %H:%M") }
+
+registration_days_indexes = registration_dates.map(&:wday)
+
+peak_day_indexes = max_count_elements(registration_days_indexes)
+
+days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
+# Days with the most registrations
+if peak_day_indexes.one? 
+  puts "#{days[peak_day_indexes[0]]} has the most registrations\n\n"
+else
+  peak_days = peak_day_indexes.each { |index| days[index] }.join(', ')
+  puts "#{peak_days} have the most registrations\n\n"
+end
+
+# Peak hours per day
 (0..6).each do |day_index|
-  days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+  registrations_at_day = registration_dates.filter { |time| time.wday == day_index }
 
-  registrations_in_day = registration_times.filter { |time| time.wday == day_index }
+  hours_with_registration = registrations_at_day.map { |registration_time| registration_time.hour.to_s }
+  
+  next puts "#{days[day_index]}: No registrations" if hours_with_registration.empty?
 
-  hours_with_registration = registrations_in_day.map(&:hour)
-
-  return puts "#{days[day_index]}: No registrations" if hours_with_registration.empty?
-
-  # limitation: when there are two hours with the same count, this method picks the smaller one 
-  peak_hour = hours_with_registration.max do |a,b|
-    hours_with_registration.count(a) <=> hours_with_registration.count(b)
+  peak_hours = max_count_elements(hours_with_registration)
+  
+  if peak_hours.one?
+    puts "#{days[day_index]}: #{peak_hours[0]}h"
+  else
+    peak_hours = peak_hours.map { |hour| hour + 'h' }.join(', ')
+    puts "#{days[day_index]}: #{peak_hours}"
   end
-
-  puts "#{days[day_index]}: #{peak_hour}h"
 end
